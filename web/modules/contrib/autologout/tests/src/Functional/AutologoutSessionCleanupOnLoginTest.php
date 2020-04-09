@@ -1,37 +1,64 @@
 <?php
 
-namespace Drupal\autologout\Tests;
-use Drupal\simpletest\WebTestBase;
+namespace Drupal\Tests\autologout\Functional;
+
+use Behat\Mink\Driver\GoutteDriver;
+use Behat\Mink\Session;
+use Drupal\Tests\BrowserTestBase;
+use Drupal\user\Entity\User;
 
 /**
- * Test session cleanup on login.
+ * Tests session cleanup on login.
  *
  * @description Ensure that the autologout module cleans up stale sessions at login
  *
  * @group Autologout
  */
-class AutologoutSessionCleanupOnLoginTest extends WebTestBase {
+class AutologoutSessionCleanupOnLoginTest extends BrowserTestBase {
+
   /**
    * Modules to enable.
    *
    * @var array
    */
   public static $modules = ['autologout', 'node'];
+
   /**
    * A store references to different sessions.
+   *
+   * @var array
    */
-  protected $curlHandles = [];
   protected $loggedInUsers = [];
+
+  /**
+   * User with admin rights.
+   *
+   * @var \Drupal\user\Entity\User|false
+   */
   protected $privilegedUser;
+
+  /**
+   * Database service.
+   *
+   * @var \Drupal\Core\Database\Connection
+   */
   protected $database;
 
   /**
-   * SetUp() performs any pre-requisite tasks that need to happen.
+   * Config factory service.
+   *
+   * @var \Drupal\Core\Config\ConfigFactoryInterface
+   */
+  protected $configFactory;
+
+  /**
+   * Performs any pre-requisite tasks that need to happen.
    */
   public function setUp() {
     parent::setUp();
     // Create and log in our privileged user.
-    $this->privilegedUser = $this->drupalCreateUser(['access content overview',
+    $this->privilegedUser = $this->drupalCreateUser([
+      'access content overview',
       'administer site configuration',
       'access site reports',
       'access administration pages',
@@ -41,24 +68,35 @@ class AutologoutSessionCleanupOnLoginTest extends WebTestBase {
       'administer autologout',
       'change own logout threshold',
     ]);
+    $this->configFactory = $this->container->get('config.factory');
     $this->database = $this->container->get('database');
   }
 
   /**
-   * Test that stale sessions are cleaned up at login.
+   * Tests that stale sessions are cleaned up at login.
    */
   public function testSessionCleanupAtLogin() {
+    $config = $this->container->get('config.factory')
+      ->getEditable('autologout.settings');
     // For the purposes of the test, set the timeout periods to 5 seconds.
-    $config = \Drupal::configFactory()->getEditable('autologout.settings');
     $config->set('timeout', 5)
       ->set('padding', 0)
       ->save();
 
     // Login in session 1.
     $this->drupalLogin($this->privilegedUser);
+    $this->mink->registerSession(
+      $this->privilegedUser->sessionId,
+      $this->getSession()
+    );
+
     // Check one active session.
     $sessions = $this->getSessions($this->privilegedUser);
-    $this->assertEqual(1, count($sessions), 'After initial login there is one active session');
+    self::assertEquals(
+      1,
+      count($sessions),
+      'After initial login there is one active session'
+    );
 
     // Switch sessions.
     $session1 = $this->stashSession();
@@ -68,10 +106,13 @@ class AutologoutSessionCleanupOnLoginTest extends WebTestBase {
 
     // Check two active sessions.
     $sessions = $this->getSessions($this->privilegedUser);
-    $this->assertEqual(2, count($sessions), 'After second login there is now two active session');
+    self::assertEquals(
+      2,
+      count($sessions),
+      'After second login there is now two active session'
+    );
 
     $this->stashSession();
-
     // Switch sessions.
     // Wait for sessions to expire.
     sleep(6);
@@ -81,20 +122,30 @@ class AutologoutSessionCleanupOnLoginTest extends WebTestBase {
 
     // Check one active session.
     $sessions = $this->getSessions($this->privilegedUser);
-    $this->assertEqual(1, count($sessions), 'After third login, there is 1 active session, two stale sessions were cleaned up.');
+    self::assertEquals(
+      1,
+      count($sessions),
+      'After third login, there is 1 active session, two stale sessions were cleaned up.'
+    );
 
     // Switch back to session 1 and check no longer logged in.
     $this->restoreSession($session1);
     $this->drupalGet('node');
-    $this->assertNoText(t('Log out'), 'User is no longer logged in on session 1.');
+    self::assertFalse($this->drupalUserIsLoggedIn($this->privilegedUser));
 
     $this->closeAllSessions();
   }
 
   /**
-   * Get active sessions for given user.
+   * Gets active sessions for given user.
+   *
+   * @param \Drupal\user\Entity\User $account
+   *   User account object.
+   *
+   * @return array
+   *   Array of sessions of the user.
    */
-  public function getSessions($account) {
+  public function getSessions(User $account) {
     // Check there is one session in the sessions table.
     $result = $this->database->select('sessions', 's')
       ->fields('s')
@@ -110,38 +161,35 @@ class AutologoutSessionCleanupOnLoginTest extends WebTestBase {
   }
 
   /**
-   * Initialise a new unique session.
+   * Initialises a new unique session.
    *
    * @return string
    *   Unique identifier for the session just stored.
-   *   It is the cookiefile name.
    */
   public function stashSession() {
-    if (empty($this->cookieFile)) {
-      // No session to stash.
+    if (empty($this->getSessionName())) {
       return 0;
     }
 
-    // The session_id is the current cookieFile.
-    $session_id = $this->cookieFile;
+    $session_id = $this->privilegedUser->sessionId;
 
-    $this->curlHandles[$session_id] = $this->curlHandle;
-    $this->loggedInUsers[$session_id] = $this->loggedInUser;
-
-    // Reset Curl.
-    unset($this->curlHandle);
-    $this->loggedInUser = FALSE;
-
-    // Set a new unique cookie filename.
     do {
-      $this->cookieFile = $this->originalFileDirectory . '/' . $this->randomMachineName() . '.jar';
-    } while (isset($this->curlHandles[$this->cookieFile]));
+      $this->generateSessionName($this->randomMachineName());
+    } while (isset($this->loggedInUsers[$this->getSessionName()]));
+
+    $this->loggedInUsers[$session_id] = clone $this->privilegedUser;
+    $this->mink->registerSession(
+      $this->getSessionName(),
+      new Session(new GoutteDriver())
+    );
+    $this->mink->setDefaultSessionName($this->getSessionName());
+    $this->loggedInUser = FALSE;
 
     return $session_id;
   }
 
   /**
-   * Restore a previously stashed session.
+   * Restores a previously stashed session.
    *
    * @param string $session_id
    *   The session to restore as returned by stashSession();
@@ -153,36 +201,29 @@ class AutologoutSessionCleanupOnLoginTest extends WebTestBase {
   public function restoreSession($session_id) {
     $old_session_id = NULL;
 
-    if (isset($this->curlHandle)) {
+    if (isset($this->loggedInUsers[$session_id])) {
       $old_session_id = $this->stashSession();
     }
 
-    // Restore the specified session.
-    $this->curlHandle = $this->curlHandles[$session_id];
-    $this->cookieFile = $session_id;
+    $this->mink->setDefaultSessionName($session_id);
+
     $this->loggedInUser = $this->loggedInUsers[$session_id];
+    $this->privilegedUser = $this->loggedInUsers[$session_id];
+    $this->loggedInUser->sessionId = $session_id;
+    $this->privilegedUser->sessionId = $session_id;
 
     return $old_session_id;
   }
 
   /**
-   * Close all stashed sessions and the current session.
+   * Closes all stashed sessions and the current session.
    */
   public function closeAllSessions() {
-    foreach ($this->curlHandles as $curl_handle) {
-      if (isset($curl_handle)) {
-        curl_close($curl_handle);
-      }
-    }
-
-    // Make the server forget all sessions.
     $this->database->truncate('sessions')->execute();
-
-    $this->curlHandles = [];
     $this->loggedInUsers = [];
+    $this->sessionName = NULL;
     $this->loggedInUser = FALSE;
-    $this->cookieFile = $this->originalFileDirectory . '/' . $this->randomMachineName() . '.jar';
-    unset($this->curlHandle);
+    $this->mink->resetSessions();
   }
 
 }
