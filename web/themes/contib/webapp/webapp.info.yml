@@ -1,0 +1,17 @@
+name: WebApp Theme
+type: theme
+description: 'WebApp Solutions website custom theme'
+package: WebApp
+core: 8.x
+libraries:
+  - webapp/global-styling
+ 
+base theme: bootstrap_barrio
+
+regions:
+  top: Top
+  msg: Msg
+  content: Content
+  bottom: Bottom
+  footer: Footer
+  header: Header

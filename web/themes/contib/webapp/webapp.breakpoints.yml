@@ -1,0 +1,36 @@
+webapp.normal:
+  label: normal
+  mediaQuery: 'all and (min-width: 980px) and (min-device-width: 980px)'
+  weight: '1'
+  multipliers:
+    - '1x'
+webapp.extralarge:
+  label: extralarge
+  mediaQuery: 'only screen and (min-width: 1200px)'
+  weight: '1'
+  multipliers:
+    - '1x'
+webapp.large:
+  label: large
+  mediaQuery: 'only screen and (min-width: 992px)'
+  weight: '1'
+  multipliers:
+    - '1x'
+webapp.medium:
+  label: medium
+  mediaQuery: 'only screen and (min-width: 768px)'
+  weight: '1'
+  multipliers:
+    - '1x'
+webapp.small:
+  label: small
+  mediaQuery: 'only screen and (min-width: 600px)'
+  weight: '1'
+  multipliers:
+    - '1x'
+webapp.extrasmall:
+  label: extrasmall
+  mediaQuery: 'only screen and (max-width: 600px)'
+  weight: '1'
+  multipliers:
+    - '1x'
