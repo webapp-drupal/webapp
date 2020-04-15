@@ -26,6 +26,7 @@
         "drupal/anonymous_login": "^1.1",
         "drupal/autologout": "^1.0",
         "drupal/better_login_form_config": "^1.1",
+        "drupal/bootstrap_barrio": "^4.24",
         "drupal/console": "^1.0.2",
         "drupal/core": "^8.7.0",
         "drupal/feeds": "^3.0",
