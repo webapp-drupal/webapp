@@ -59,7 +59,7 @@ function bootstrap_barrio_preprocess_html(&$variables) {
   if (isset($path_args[0]) && isset($path_args[1]) && ($path_args[0] == 'user')) {
     $variables['attributes']['class'][] = 'page-user-' . $path_args[1];
   }
-  if (isset($path_args[0]) && isset($path_args[1]) && isset($path_args[2]) && 
+  if (isset($path_args[0]) && isset($path_args[1]) && isset($path_args[2]) &&
     $path_args[0] == 'taxonomy' && $path_args[1] == 'term') {
     $variables['attributes']['class'][] = 'page-taxonomy-term-' . $path_args[2];
     $term = \Drupal::entityTypeManager()->getStorage('taxonomy_term')->load($path_args[2]);
@@ -123,6 +123,11 @@ function bootstrap_barrio_preprocess_page(&$variables) {
     $variables['#attached']['library'][] = 'bootstrap_barrio/' . $fonts;
   }
 
+  $icons = theme_get_setting('bootstrap_barrio_bootstrap_icons');
+  if ($icons) {
+    $variables['#attached']['library'][] = 'bootstrap_barrio/bootstrap-icons';
+  }
+
   $icons = theme_get_setting('bootstrap_barrio_icons');
   if ($icons) {
     $variables['#attached']['library'][] = 'bootstrap_barrio/' . $icons;
@@ -152,11 +157,11 @@ function bootstrap_barrio_preprocess_page(&$variables) {
 	  'role' => [ 'main' ],
   ];
   $variables['sidebar_first_attributes'] = [
-    'class' =>  [ 'sidebar', $sidebar_first_width ],
+    'class' =>  [ 'sidebar_first sidebar', $sidebar_first_width ],
 	  'id' => [ 'sidebar_first' ],
   ];
   $variables['sidebar_second_attributes'] = [
-    'class' => [ 'sidebar', $sidebar_second_width ],
+    'class' => [ 'sidebar_second sidebar', $sidebar_second_width ],
 	  'id' => [ 'sidebar_second' ],
   ];
 
@@ -492,7 +497,7 @@ function bootstrap_barrio_theme_suggestions_user_alter(array &$suggestions, arra
 /**
  * Implements HOOK_theme_suggestions_HOOK_alter().
  */
-function radix_theme_suggestions_page_alter(array &$suggestions, array $variables) {
+function bootstrap_barrio_theme_suggestions_page_alter(array &$suggestions, array $variables) {
   // Add a template suggestions for node type.
   /** @var \Drupal\node\NodeInterface $node */
   if ($node = \Drupal::routeMatch()->getParameter('node')) {
