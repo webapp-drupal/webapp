@@ -115,7 +115,7 @@ node:
     component:
       css/components/node.css: { weight: -10 }
 
-sidebar-collapse:
+sidebar_collapse:
   version: VERSION
   js:
     js/sidebar-collapse.js: { external: true }
@@ -248,6 +248,18 @@ monserrat_lato:
       //fonts.googleapis.com/css?family=Montserrat:400,700: {}
 
 # Colors
+
+messages_white:
+  version: VERSION
+  css:
+    component:
+      css/colors/messages/messages-white.css: {}
+
+messages_gray:
+  version: VERSION
+  css:
+    component:
+      css/colors/messages/messages-gray.css: {}
 
 messages_light:
   version: VERSION
