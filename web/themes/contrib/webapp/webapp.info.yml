@@ -6,8 +6,6 @@ core: 8.x
 libraries:
   - webapp/global-styling
  
-base theme: bootstrap_barrio
-
 regions:
   top: Top
   msg: Msg
